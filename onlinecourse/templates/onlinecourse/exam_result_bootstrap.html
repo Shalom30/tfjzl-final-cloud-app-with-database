@@ -1,55 +1,166 @@
+{% load static %}
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    {% load static %}
-    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet"
+          href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+    <title>Exam Result - {{ course.name }}</title>
 </head>
 <body>
 
- <nav class="navbar navbar-light bg-light">
-    <div class="container-fluid">
-        <div class="navbar-header">
-              <a class="navbar-brand" href="{% url 'onlinecourse:index' %}">Home</a>
-        </div>
-        <ul class="nav navbar-nav navbar-right">
+<nav class="navbar navbar-expand-lg navbar-dark bg-dark">
+    <a class="navbar-brand" href="{% url 'onlinecourse:index' %}">OnlineCourse</a>
+    <div class="collapse navbar-collapse">
+        <ul class="navbar-nav ml-auto">
             {% if user.is_authenticated %}
-            <li>
-                <a class="btn btn-link" href="#">{{ user.first_name }}({{ user.username }})</a>
-                <a class="btn btn-link" href="{% url 'onlinecourse:logout' %}">Logout</a>
+            <li class="nav-item">
+                <span class="navbar-text text-white mr-3">
+                    Welcome, {{ user.username }}
+                </span>
             </li>
-            {% else %}
-            <li>
-                <form class="form-inline" action="{% url 'onlinecourse:login' %}" method="post">
-                    {% csrf_token %}
-                    <div class="input-group">
-                        <input type="text" class="form-control" placeholder="Username" name="username" >
-                        <input type="password" class="form-control" placeholder="Username" name="psw" >
-                        <button class="btn btn-primary" type="submit">Login</button>
-                        <a class="btn btn-link" href="{% url 'onlinecourse:registration' %}">Sign Up</a>
-                    </div>
-                </form>
+            <li class="nav-item">
+                <a class="nav-link" href="{% url 'onlinecourse:logout' %}">Logout</a>
             </li>
             {% endif %}
         </ul>
     </div>
 </nav>
 
-<div class="container-fluid">
-    {% if grade > 80 %}
-    <div class="alert alert-success">
-       <!--HINT Display passed info -->
-    </div>
-        {% else %}
-        <div class="alert alert-danger">
-            <!--HINT Display failed info -->
-        </div>
-        <a class="btn btn-link text-danger" href="{% url 'onlinecourse:course_details' course.id %}">Re-test</a>
-        {% endif %}
-        <div class="card-columns-vertical mt-1">
-        <h5 class="">Exam results</h5>
-            <!--HINT Display exam results-->
+<div class="container mt-4">
+
+    {% if passed %}
+    <div class="alert alert-success d-flex align-items-center" role="alert">
+        <span style="font-size:2rem; margin-right:16px;">🎉</span>
+        <div>
+            <h4 class="alert-heading mb-1">Congratulations!</h4>
+            <p class="mb-0">
+                You have successfully passed the exam for
+                <strong>{{ course.name }}</strong>.
+            </p>
         </div>
     </div>
+    {% else %}
+    <div class="alert alert-danger d-flex align-items-center" role="alert">
+        <span style="font-size:2rem; margin-right:16px;">❌</span>
+        <div>
+            <h4 class="alert-heading mb-1">Unfortunately, you did not pass.</h4>
+            <p class="mb-0">
+                Please review the course material and try again.
+            </p>
+        </div>
+    </div>
+    {% endif %}
+
+    <div class="card mb-4">
+        <div class="card-header bg-primary text-white">
+            <h5 class="mb-0">Exam Summary — {{ course.name }}</h5>
+        </div>
+        <div class="card-body">
+            <div class="row">
+                <div class="col-md-6">
+                    <table class="table table-borderless">
+                        <tr>
+                            <td><strong>Your Score:</strong></td>
+                            <td>{{ total_score }} / {{ total_possible }}</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Percentage:</strong></td>
+                            <td>{{ percentage|floatformat:1 }}%</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Status:</strong></td>
+                            <td>
+                                {% if passed %}
+                                <span class="badge badge-success p-2">PASSED</span>
+                                {% else %}
+                                <span class="badge badge-danger p-2">FAILED</span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                    </table>
+                </div>
+            </div>
+            <div class="progress" style="height: 24px;">
+                <div class="progress-bar
+                    {% if passed %}bg-success{% else %}bg-danger{% endif %}"
+                     role="progressbar"
+                     style="width: {{ percentage }}%;"
+                     aria-valuenow="{{ percentage }}"
+                     aria-valuemin="0"
+                     aria-valuemax="100">
+                    {{ percentage|floatformat:1 }}%
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="card mb-4">
+        <div class="card-header bg-secondary text-white">
+            <h5 class="mb-0">Detailed Exam Results</h5>
+        </div>
+        <div class="card-body">
+            {% for question in course.question_set.all %}
+            <div class="card mb-3
+                {% if question.is_get_score selected_ids %}
+                    border-success
+                {% else %}
+                    border-danger
+                {% endif %}">
+                <div class="card-header
+                    {% if question.is_get_score selected_ids %}
+                        bg-success text-white
+                    {% else %}
+                        bg-danger text-white
+                    {% endif %}">
+                    <strong>Q{{ forloop.counter }}: {{ question.question_text }}</strong>
+                    <span class="float-right">
+                        {% if question.is_get_score selected_ids %}
+                            ✓ +{{ question.grade }} pts
+                        {% else %}
+                            ✗ 0 pts
+                        {% endif %}
+                    </span>
+                </div>
+                <div class="card-body">
+                    {% for choice in question.choice_set.all %}
+                    <div class="mb-1">
+                        {% if choice.id in selected_ids %}
+                            {% if choice.is_correct %}
+                            <span class="badge badge-success mr-2">✓ Your answer</span>
+                            {% else %}
+                            <span class="badge badge-danger mr-2">✗ Your answer</span>
+                            {% endif %}
+                        {% else %}
+                            {% if choice.is_correct %}
+                            <span class="badge badge-warning mr-2">Correct answer</span>
+                            {% else %}
+                            <span class="badge badge-light mr-2">Not selected</span>
+                            {% endif %}
+                        {% endif %}
+                        {{ choice.choice_text }}
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+
+    <div class="text-center mb-5">
+        <a href="{% url 'onlinecourse:course_details' course.id %}"
+           class="btn btn-primary mr-3">
+            Back to Course
+        </a>
+        <a href="{% url 'onlinecourse:index' %}" class="btn btn-secondary">
+            All Courses
+        </a>
+    </div>
+
+</div>
+
+<script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js">
+</script>
 </body>
 </html>
